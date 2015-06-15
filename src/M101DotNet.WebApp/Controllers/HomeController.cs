@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.Remoting.Contexts;
 using System.Threading.Tasks;
 using System.Web;
 using System.Web.Mvc;
@@ -41,10 +42,15 @@ namespace M101DotNet.WebApp.Controllers
 		public async Task<ActionResult> Index()
 		{
 			var blogContext = new BlogContext();
+
 			// XXX WORK HERE
 			// find the most recent 10 posts and order them
 			// from newest to oldest
-
+			var recentPosts = await blogContext.Posts.Find(new BsonDocument())
+				.SortByDescending(p => p.CreatedAtUtc)
+				.Limit(10)
+				.ToListAsync();
+			
 			var model = new IndexModel
 			{
 				RecentPosts = recentPosts
@@ -67,20 +73,41 @@ namespace M101DotNet.WebApp.Controllers
                 return View(model);
             }
 
-            var blogContext = new BlogContext();
             // XXX WORK HERE
             // Insert the post into the posts collection
-			PostModel post = new PostModel();
-            return RedirectToAction("Post", new { id = post.Id });
+			var post = await InsertPostIntoCollection(model);
+
+	        return RedirectToAction("Post", new { id = post.Id });
         }
 
-        [HttpGet]
+	    private async Task<Post> InsertPostIntoCollection(NewPostModel model)
+	    {
+			var blogContext = new BlogContext();
+		    Post post = new Post();
+		    post.Author = this.User.Identity.Name;
+		    post.Title = model.Title;
+		    post.Content = model.Content;
+		    post.CreatedAtUtc = DateTime.UtcNow;
+		    if (!String.IsNullOrWhiteSpace(model.Tags))
+		    {
+			    post.Tags = model.Tags.Split(new char[] {','}).ToList();
+		    }
+			post.Comments = new List<Comment>();
+
+		    await blogContext.Posts.InsertOneAsync(post);
+
+			return post;
+	    }
+
+	    [HttpGet]
         public async Task<ActionResult> Post(string id)
         {
             var blogContext = new BlogContext();
 
             // XXX WORK HERE
             // Find the post with the given identifier
+			var objectId = new ObjectId(id);
+			var post = await blogContext.Posts.Find(p => p.Id == objectId).SingleOrDefaultAsync();
 
             if (post == null)
             {
@@ -104,9 +131,31 @@ namespace M101DotNet.WebApp.Controllers
             // Find all the posts with the given tag if it exists.
             // Otherwise, return all the posts.
             // Each of these results should be in descending order.
+	        List<Post> posts;
+	        if (tag != null)
+	        {
+		       posts = await blogContext.Posts.Find(p => p.Tags.Contains(tag))
+				.SortByDescending(p => p.CreatedAtUtc)
+				.ToListAsync(); 
+	        }
+	        else
+	        {
+		        posts = await blogContext.Posts.Find(new BsonDocument()).ToListAsync();
+	        }
+			
 
             return View(posts);
         }
+
+		[HttpGet]
+		public async Task<ActionResult> DeletePosts()
+		{
+			var blogContext = new BlogContext();
+
+			await blogContext.Posts.DeleteManyAsync(new BsonDocument());
+
+			return RedirectToAction("Index");
+		}
 
         [HttpPost]
         public async Task<ActionResult> NewComment(NewCommentModel model)
@@ -116,15 +165,33 @@ namespace M101DotNet.WebApp.Controllers
                 return RedirectToAction("Post", new { id = model.PostId });
             }
 
+			// XXX WORK HERE
+			// add a comment to the post identified by model.PostId.
+			// you can get the author from "this.User.Identity.Name"
+	        Comment comment = new Comment
+	        {
+		        Author = this.User.Identity.Name,
+				Content = model.Content,
+				CreatedAtUtc = DateTime.UtcNow
+	        };
+
+			var builder = Builders<Post>.Filter;
+			var filter = builder.Eq("_id", model.PostId);
+
             var blogContext = new BlogContext();
-            // XXX WORK HERE
-            // add a comment to the post identified by model.PostId.
-            // you can get the author from "this.User.Identity.Name"
+
+	        var result = await blogContext.Posts.FindOneAndUpdateAsync<Post>(
+				filter,
+		        Builders<Post>.Update.Push(p => p.Comments, comment),
+		        new FindOneAndUpdateOptions<Post, Post>
+		        {
+			        ReturnDocument = ReturnDocument.After
+		        });
 
             return RedirectToAction("Post", new { id = model.PostId });
         }
 
-		static async Task<List<Grade>> DeleteGradesAsync()
+		private async Task<List<Grade>> DeleteGradesAsync()
 	    {
 			var connectionString = "mongodb://localhost:27017";
 			var client = new MongoClient(connectionString);
@@ -166,7 +233,7 @@ namespace M101DotNet.WebApp.Controllers
 		    return gradesDeleted;
 	    }
 
-		static async Task<List<Grade>> DeleteGrades31Async()
+		private async Task<List<Grade>> DeleteGrades31Async()
 		{
 			var connectionString = "mongodb://localhost:27017";
 			var client = new MongoClient(connectionString);
