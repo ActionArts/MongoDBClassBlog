@@ -1,4 +1,6 @@
+
 M101DotNet.v12.suo
+
 src/M101DotNet.WebApp/M101DotNet.WebApp.csproj.user
-src/M101DotNet.WebApp/obj/Debug/DesignTimeResolveAssemblyReferencesInput.cache
-src/M101DotNet.WebApp/obj/Debug/DesignTimeResolveAssemblyReferencesInput.cache
+src/M101DotNet.WebApp/obj/*
+src/M101DotNet.WebApp/obj/Debug/*

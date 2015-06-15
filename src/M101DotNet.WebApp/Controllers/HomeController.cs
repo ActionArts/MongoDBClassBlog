@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Web;
 using System.Web.Mvc;
+using M101DotNet.WebApp.Models.Students;
 using MongoDB.Driver;
 using M101DotNet.WebApp.Models;
 using M101DotNet.WebApp.Models.Home;
@@ -14,21 +15,6 @@ namespace M101DotNet.WebApp.Controllers
 {
     public class HomeController : Controller
     {
-        public async Task<ActionResult> Index()
-        {
-            var blogContext = new BlogContext();
-            // XXX WORK HERE
-            // find the most recent 10 posts and order them
-            // from newest to oldest
-
-            var model = new IndexModel
-            {
-                RecentPosts = recentPosts
-            };
-
-            return View(model);
-        }
-
 		//Homework 2.2
 		//[HttpGet]
 		//[AsyncTimeout(8000)]
@@ -39,6 +25,33 @@ namespace M101DotNet.WebApp.Controllers
 
 		//	return View(gradesDeleted);
 		//}
+
+		//Homework 3.1
+		//[HttpGet]
+		//[AsyncTimeout(8000)]
+		//[HandleError(ExceptionType = typeof(TimeoutException), View = "TimedOut")]
+		//public async Task<ActionResult> Index()
+		//{
+		//	List<Grade> gradesDeleted = await DeleteGrades31Async();
+
+		//	return View(gradesDeleted);
+		//}
+
+		//Homework 3.2
+		public async Task<ActionResult> Index()
+		{
+			var blogContext = new BlogContext();
+			// XXX WORK HERE
+			// find the most recent 10 posts and order them
+			// from newest to oldest
+
+			var model = new IndexModel
+			{
+				RecentPosts = recentPosts
+			};
+
+			return View(model);
+		}
 
         [HttpGet]
         public ActionResult NewPost()
@@ -57,6 +70,7 @@ namespace M101DotNet.WebApp.Controllers
             var blogContext = new BlogContext();
             // XXX WORK HERE
             // Insert the post into the posts collection
+			PostModel post = new PostModel();
             return RedirectToAction("Post", new { id = post.Id });
         }
 
@@ -151,6 +165,30 @@ namespace M101DotNet.WebApp.Controllers
 
 		    return gradesDeleted;
 	    }
-    }
+
+		static async Task<List<Grade>> DeleteGrades31Async()
+		{
+			var connectionString = "mongodb://localhost:27017";
+			var client = new MongoClient(connectionString);
+
+			//Write a program in the language of your choice that will remove the lowest homework score 
+			//for each student. Since there is a single document for each student containing an array of scores, 
+			//you will need to update the scores array and remove the homework.
+
+			//Remember, just remove a homework score. Don't remove a quiz or an exam!
+
+			//Hint/spoiler: With the new schema, this problem is a lot harder and that is sort of the point. 
+			//One way is to find the lowest homework in code and then update the scores array with the low homework pruned.
+
+			var db = client.GetDatabase("students");
+
+			var col = db.GetCollection<Grade>("grades");
+
+
+			List<Grade> gradesDeleted = new List<Grade>();
+
+			return gradesDeleted;
+		}
+    
     }
 }
