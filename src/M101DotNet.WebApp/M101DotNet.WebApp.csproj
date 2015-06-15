@@ -150,6 +150,7 @@
     <Compile Include="Models\BlogContext.cs" />
     <Compile Include="Models\Account\LoginModel.cs" />
     <Compile Include="Models\Comment.cs" />
+    <Compile Include="Models\Grade.cs" />
     <Compile Include="Models\Home\NewCommentModel.cs" />
     <Compile Include="Models\Home\NewPostModel.cs" />
     <Compile Include="Models\Home\IndexModel.cs" />
