@@ -33,9 +33,9 @@ namespace M101DotNet.WebApp.Controllers
 		//[HandleError(ExceptionType = typeof(TimeoutException), View = "TimedOut")]
 		//public async Task<ActionResult> Index()
 		//{
-		//	List<Grade> gradesDeleted = await DeleteGrades31Async();
+		//	List<Student> studentsProcessed = await DeleteLowestHomeworkScoresAsync();
 
-		//	return View(gradesDeleted);
+		//	return View(studentsProcessed);
 		//}
 
 		//Homework 3.2
@@ -50,7 +50,7 @@ namespace M101DotNet.WebApp.Controllers
 				.SortByDescending(p => p.CreatedAtUtc)
 				.Limit(10)
 				.ToListAsync();
-			
+
 			var model = new IndexModel
 			{
 				RecentPosts = recentPosts
@@ -175,20 +175,19 @@ namespace M101DotNet.WebApp.Controllers
 				CreatedAtUtc = DateTime.UtcNow
 	        };
 
-			var builder = Builders<Post>.Filter;
-			var filter = builder.Eq("_id", model.PostId);
+			var objectId = new ObjectId(model.PostId);
 
             var blogContext = new BlogContext();
 
 	        var result = await blogContext.Posts.FindOneAndUpdateAsync<Post>(
-				filter,
+				p => p.Id == objectId,
 		        Builders<Post>.Update.Push(p => p.Comments, comment),
 		        new FindOneAndUpdateOptions<Post, Post>
 		        {
 			        ReturnDocument = ReturnDocument.After
 		        });
 
-            return RedirectToAction("Post", new { id = model.PostId });
+			return RedirectToAction("Post", new { id = result.Id });
         }
 
 		private async Task<List<Grade>> DeleteGradesAsync()
@@ -233,28 +232,56 @@ namespace M101DotNet.WebApp.Controllers
 		    return gradesDeleted;
 	    }
 
-		private async Task<List<Grade>> DeleteGrades31Async()
+		private async Task<List<Student>> DeleteLowestHomeworkScoresAsync()
 		{
 			var connectionString = "mongodb://localhost:27017";
 			var client = new MongoClient(connectionString);
 
-			//Write a program in the language of your choice that will remove the lowest homework score 
-			//for each student. Since there is a single document for each student containing an array of scores, 
-			//you will need to update the scores array and remove the homework.
+			//Write a program in the language of your choice that will remove the 
+			//lowest homework score for each student. Since there is a single document
+			//for each student containing an array of scores, you will need to update 
+			//the scores array and remove the homework.
 
 			//Remember, just remove a homework score. Don't remove a quiz or an exam!
 
-			//Hint/spoiler: With the new schema, this problem is a lot harder and that is sort of the point. 
-			//One way is to find the lowest homework in code and then update the scores array with the low homework pruned.
+			//Hint/spoiler: With the new schema, this problem is a lot harder and that 
+			//is sort of the point. One way is to find the lowest homework in code and 
+			//then update the scores array with the low homework pruned.
 
-			var db = client.GetDatabase("students");
+			var db = client.GetDatabase("school");
 
-			var col = db.GetCollection<Grade>("grades");
+			var col = db.GetCollection<Student>("students");
 
+			var students = await col.Find(new BsonDocument())
+				.ToListAsync();
 
-			List<Grade> gradesDeleted = new List<Grade>();
+			var lowestHomeworkScores = students
+				.Select(student => student.scores
+					.FindAll(sc => sc.type == "homework")
+					.OrderBy(sc => sc.score)
+					.First()
+				).ToList();
 
-			return gradesDeleted;
+			var studentsWithScoresRemoved = new List<Student>();
+
+			int index = 0;
+			foreach (var score in students)
+			{
+				int id = score.Id;
+
+				var result = await col.FindOneAndUpdateAsync<Student>(
+					s => s.Id == id,
+					Builders<Student>.Update.Pull(s => s.scores, lowestHomeworkScores[index]),
+					new FindOneAndUpdateOptions<Student, Student>
+					{
+						ReturnDocument = ReturnDocument.After
+					});
+					studentsWithScoresRemoved.Add(result);
+
+				index++;
+			}
+
+			return studentsWithScoresRemoved;
 		}
     
     }

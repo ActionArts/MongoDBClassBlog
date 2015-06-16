@@ -8,7 +8,7 @@ namespace M101DotNet.WebApp.Models.Students
 {
 	public class Student
 	{
-		public ObjectId Id { get; set; }
+		public int Id { get; set; }
 		public string name { get; set; }
 		public List<Score> scores { get; set; }
 	}

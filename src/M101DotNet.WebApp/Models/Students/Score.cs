@@ -7,7 +7,7 @@ namespace M101DotNet.WebApp.Models.Students
 {
 	public class Score
 	{
-		string type { get; set; }
-		double score { get; set; }
+		public string type { get; set; }
+		public double score { get; set; }
 	}
 }
